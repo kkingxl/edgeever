@@ -3,7 +3,6 @@
 import "mermaid/dist/mermaid.min.js";
 import "katex/dist/katex.min.css";
 import { renderMermaidSVG, THEMES } from "beautiful-mermaid";
-import { toCanvas } from "html-to-image";
 import Image from "@tiptap/extension-image";
 import CodeBlock from "@tiptap/extension-code-block";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -94,7 +93,6 @@ export interface LocalTiptapEditorRef extends DOMImperativeFactory {
   replaceAll: (query: DOMValue, replacement: DOMValue) => void;
   search: (query: DOMValue, index: DOMValue) => void;
   pushAiStreamEvent: (payloadJson: DOMValue) => void;
-  exportImage: (requestJson: DOMValue) => void;
 }
 
 type LocalTiptapEditorSharedProps = {
@@ -105,7 +103,6 @@ type LocalTiptapEditorSharedProps = {
   onResourcePress?: (targetJson: string) => Promise<void>;
   onReady?: (startupMs: number) => Promise<void>;
   onSearchResult?: (count: number, index: number, query: string) => Promise<void>;
-  onImageExportEvent?: (payloadJson: string) => Promise<void>;
   ref: Ref<LocalTiptapEditorRef>;
   locale: "zh-CN" | "en-US";
   theme: "light" | "dark";
@@ -148,54 +145,6 @@ const TRANSIENT_IMAGE_UPLOAD_META = "edgeeverImageUploadPlaceholder";
 const ignoreSearchResult = async () => undefined;
 const ignoreAiRequest = async () => undefined;
 const AI_PROMPT_OPTION_PREFIX = "prompt:";
-const IMAGE_EXPORT_WIDTH = 768;
-const IMAGE_EXPORT_PIXEL_RATIO = 1.5;
-const IMAGE_EXPORT_CHUNK_SIZE = 256 * 1024;
-
-type ImageExportRequest = {
-  requestId: string;
-  format: "jpeg" | "png";
-  title: string;
-  fallbackTitle: string;
-  notebook?: string;
-  tags?: string[];
-  updatedAt?: string;
-  background?: "mint" | "slate" | "warm";
-  branding?: boolean;
-};
-
-const IMAGE_EXPORT_LIGHT_STYLES = `
-  .edgeever-image-document { width: ${IMAGE_EXPORT_WIDTH}px; padding: 40px 28px 32px; background: #f8fafc; color: #172033; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  .edgeever-image-card { min-height: 1px; padding: 40px 36px 32px; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; color: #172033; }
-  .edgeever-image-title { margin: 0 0 14px; color: #0f172a; font-size: 36px; font-weight: 760; letter-spacing: -0.02em; line-height: 1.24; overflow-wrap: anywhere; }
-  .edgeever-image-meta { margin: 0 0 28px; padding-bottom: 18px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
-  .edgeever-image-content { font-size: 17px; line-height: 1.82; }
-  .edgeever-image-content, .edgeever-image-content .tiptap { min-height: 0 !important; height: auto !important; overflow: visible !important; background: #fff !important; color: #172033 !important; }
-  .edgeever-image-content h1, .edgeever-image-content h2, .edgeever-image-content h3 { color: #0f172a !important; }
-  .edgeever-image-content pre { background: #f1f5f9 !important; color: #172033 !important; }
-  .edgeever-image-content code { color: inherit !important; }
-  .edgeever-image-content blockquote { color: #475569 !important; border-color: #94a3b8 !important; }
-  .edgeever-image-content table, .edgeever-image-content th, .edgeever-image-content td { border-color: #cbd5e1 !important; color: #172033 !important; }
-  .edgeever-image-content th { background: #f8fafc !important; }
-  .edgeever-image-brand { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 13px; font-weight: 650; letter-spacing: 0.01em; }
-  .edgeever-image-brand-mark { width: 9px; height: 9px; border-radius: 3px; background: #16a06e; }
-  .edgeever-image-brand-name { color: #07130b; font-weight: 760; }
-`;
-
-const sanitizeImageExportBasename = (title: string, fallback: string) => {
-  const value = title.replace(/[\u0000-\u001f<>:"/\\|?*]/g, "-").replace(/\s+/g, " ").replace(/[. ]+$/g, "").trim().slice(0, 100);
-  return value || fallback;
-};
-
-const blobToBytes = async (blob: Blob) => new Uint8Array(await blob.arrayBuffer());
-
-const bytesToBase64 = (bytes: Uint8Array) => {
-  let binary = "";
-  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
-  }
-  return btoa(binary);
-};
 
 const fallbackPromptParameterKind = (action: AiAction): AiPromptParameterKind =>
   action === "translate" ? "target-language" : action === "change-tone" ? "tone" : "none";
@@ -583,7 +532,6 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
   const onAiCancelRef = useRef(props.mode === "viewer" ? undefined : props.onAiCancel);
   const onReadyRef = useRef(props.onReady ?? (async () => undefined));
   const onSearchResultRef = useRef(props.onSearchResult ?? ignoreSearchResult);
-  const onImageExportEventRef = useRef(props.onImageExportEvent);
   const searchStateRef = useRef({ activeIndex: -1, query: "" });
   const [aiPanel, setAiPanel] = useState<MobileAiPanelState | null>(null);
   const [aiSelectionTrigger, setAiSelectionTrigger] = useState<MobileAiSelectionTriggerPosition | null>(null);
@@ -639,7 +587,6 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
   onAiCancelRef.current = props.mode === "viewer" ? undefined : props.onAiCancel;
   onReadyRef.current = props.onReady ?? (async () => undefined);
   onSearchResultRef.current = props.onSearchResult ?? ignoreSearchResult;
-  onImageExportEventRef.current = props.onImageExportEvent;
   const protectedImageExtension = useMemo(
     () => createProtectedImageExtension(
       props.baseUrl,
@@ -1088,106 +1035,6 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     }
   }, [aiUndoFingerprint, editor, props.baseUrl]);
 
-  const exportImage = useCallback((requestJsonValue: DOMValue) => {
-    if (typeof requestJsonValue !== "string" || !editor || editor.isDestroyed || !onImageExportEventRef.current) return;
-
-    void (async () => {
-      let request: ImageExportRequest;
-      try {
-        request = JSON.parse(requestJsonValue) as ImageExportRequest;
-        if (!request.requestId || (request.format !== "png" && request.format !== "jpeg")) return;
-      } catch {
-        return;
-      }
-
-      const notify = (payload: Record<string, unknown>) =>
-        onImageExportEventRef.current?.(JSON.stringify({ requestId: request.requestId, ...payload }));
-      const host = document.createElement("div");
-      host.style.cssText = `position:fixed;left:-100000px;top:0;width:${IMAGE_EXPORT_WIDTH}px;pointer-events:none;`;
-      const style = document.createElement("style");
-      style.textContent = IMAGE_EXPORT_LIGHT_STYLES;
-      const documentRoot = document.createElement("div");
-      documentRoot.className = "edgeever-image-document";
-      const card = document.createElement("article");
-      card.className = "edgeever-image-card";
-      const title = document.createElement("h1");
-      title.className = "edgeever-image-title";
-      title.textContent = request.title || request.fallbackTitle;
-      card.appendChild(title);
-      const metadata = [request.notebook, request.updatedAt, ...(request.tags ?? []).map((tag) => `#${tag}`)].filter(Boolean);
-      if (metadata.length > 0) {
-        const meta = document.createElement("div");
-        meta.className = "edgeever-image-meta";
-        meta.textContent = metadata.join(" · ");
-        card.appendChild(meta);
-      }
-      const content = document.createElement("div");
-      content.className = "edgeever-image-content";
-      const editorClone = editor.view.dom.cloneNode(true) as HTMLElement;
-      editorClone.removeAttribute("contenteditable");
-      editorClone.querySelectorAll("button, [contenteditable='true']").forEach((element) => {
-        element.removeAttribute("contenteditable");
-        if (element instanceof HTMLButtonElement) element.remove();
-      });
-      content.appendChild(editorClone);
-      card.appendChild(content);
-      if (request.branding) {
-        const footer = document.createElement("footer");
-        footer.className = "edgeever-image-brand";
-        footer.innerHTML = '<span class="edgeever-image-brand-mark"></span><span>Made with <span class="edgeever-image-brand-name">EdgeEver</span></span>';
-        card.appendChild(footer);
-      }
-      documentRoot.appendChild(card);
-      host.append(style, documentRoot);
-      document.body.appendChild(host);
-
-      try {
-        await document.fonts?.ready;
-        await Promise.all(Array.from(documentRoot.querySelectorAll("img")).map(async (image) => {
-          if (image.complete) return;
-          try { await image.decode(); } catch { /* Export the readable remainder. */ }
-        }));
-        const totalHeight = Math.max(1, Math.ceil(documentRoot.getBoundingClientRect().height));
-        const backgroundColor = {
-          mint: "#ecfdf5",
-          slate: "#f8fafc",
-          warm: "#fffbeb",
-        }[request.background ?? "slate"];
-        documentRoot.style.backgroundColor = backgroundColor;
-        const canvas = await toCanvas(documentRoot, {
-          backgroundColor,
-          height: totalHeight,
-          pixelRatio: IMAGE_EXPORT_PIXEL_RATIO,
-          skipFonts: true,
-          width: IMAGE_EXPORT_WIDTH,
-        });
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(
-            (result) => result ? resolve(result) : reject(new Error("Image renderer returned an empty file")),
-            request.format === "jpeg" ? "image/jpeg" : "image/png",
-            request.format === "jpeg" ? 0.9 : 1,
-          );
-        });
-
-        const extension = request.format === "jpeg" ? "jpg" : "png";
-        const basename = sanitizeImageExportBasename(request.title, request.fallbackTitle);
-        const bytes = await blobToBytes(blob);
-        const filename = `${basename}.${extension}`;
-        const mimeType = request.format === "jpeg" ? "image/jpeg" : "image/png";
-
-        const base64 = bytesToBase64(bytes);
-        for (let offset = 0; offset < base64.length; offset += IMAGE_EXPORT_CHUNK_SIZE) {
-          await notify({ type: "chunk", chunk: base64.slice(offset, offset + IMAGE_EXPORT_CHUNK_SIZE) });
-        }
-        await notify({ type: "complete", filename, mimeType });
-      } catch (error) {
-        await notify({ type: "error", message: error instanceof Error ? error.message : "Image export failed" });
-      } finally {
-        host.remove();
-      }
-    })();
-  }, [editor]);
-
   useDOMImperativeHandle(
     props.ref,
     () => ({
@@ -1210,9 +1057,8 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       replaceAll,
       search,
       pushAiStreamEvent,
-      exportImage,
     }),
-    [appendAttachment, beginImageUpload, cancelImageUpload, completeImageUpload, editor, exportImage, flush, isViewer, pushAiStreamEvent, removeResource, renameResource, replaceAll, search, setContent]
+    [appendAttachment, beginImageUpload, cancelImageUpload, completeImageUpload, editor, flush, isViewer, pushAiStreamEvent, removeResource, renameResource, replaceAll, search, setContent]
   );
 
   useEffect(() => {
