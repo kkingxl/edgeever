@@ -20,6 +20,7 @@ export type ShortcutAction =
   | "focusReplace"
   | "openAiAssistant"
   | "saveAndSync"
+  | "toggleReadingProtection"
   | "toggleEditorMode";
 export type ShortcutBinding = {
   key: string;
@@ -123,6 +124,7 @@ export const IMAGE_COMPRESSION_STORAGE_KEY = "edgeever.imageCompressionEnabled";
 export const SYNC_INTERVAL_STORAGE_KEY = "edgeever.syncInterval";
 const LEGACY_AUTO_SAVE_INTERVAL_STORAGE_KEY = "edgeever.autoSaveInterval";
 export const DESKTOP_FOCUS_MODE_STORAGE_KEY = "edgeever.desktopFocusMode";
+export const DESKTOP_READING_PROTECTION_STORAGE_KEY = "edgeever.desktopReadingProtection";
 export const EDITOR_CONTENT_ALIGNMENT_STORAGE_KEY = "edgeever.editorContentAlignment";
 export const MEMO_LIST_DENSITY_STORAGE_KEY = "edgeever.memoListDensity";
 export const MEMO_LIST_WIDTH_STORAGE_KEY = "edgeever.memoListWidth";
@@ -204,6 +206,11 @@ export const getShortcutActionOptions = (
     description: t("shortcuts.actions.saveAndSync.description"),
   },
   {
+    value: "toggleReadingProtection",
+    label: t("shortcuts.actions.toggleReadingProtection.label"),
+    description: t("shortcuts.actions.toggleReadingProtection.description"),
+  },
+  {
     value: "toggleEditorMode",
     label: t("shortcuts.actions.toggleEditorMode.label"),
     description: t("shortcuts.actions.toggleEditorMode.description"),
@@ -217,6 +224,7 @@ export const DEFAULT_SHORTCUT_SETTINGS: ShortcutSettings = {
   focusReplace: { key: "h", ctrlOrMeta: true, shift: false, alt: false },
   openAiAssistant: { key: "j", ctrlOrMeta: true, shift: false, alt: false },
   saveAndSync: { key: "s", ctrlOrMeta: true, shift: false, alt: false },
+  toggleReadingProtection: { key: "l", ctrlOrMeta: true, shift: true, alt: false },
   toggleEditorMode: { key: "/", ctrlOrMeta: true, shift: false, alt: false },
 };
 
@@ -231,6 +239,7 @@ const SHORTCUT_ACTION_VALUES: ShortcutAction[] = [
   "focusReplace",
   "openAiAssistant",
   "saveAndSync",
+  "toggleReadingProtection",
   "toggleEditorMode",
 ];
 
@@ -312,6 +321,22 @@ export const readDesktopFocusModePreference = () => {
 export const writeDesktopFocusModePreference = (enabled: boolean) => {
   try {
     window.localStorage.setItem(DESKTOP_FOCUS_MODE_STORAGE_KEY, enabled ? "true" : "false");
+  } catch {
+    // Local storage can be unavailable in private or restricted browser contexts.
+  }
+};
+
+export const readDesktopReadingProtectionPreference = () => {
+  try {
+    return window.localStorage.getItem(DESKTOP_READING_PROTECTION_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
+export const writeDesktopReadingProtectionPreference = (enabled: boolean) => {
+  try {
+    window.localStorage.setItem(DESKTOP_READING_PROTECTION_STORAGE_KEY, enabled ? "true" : "false");
   } catch {
     // Local storage can be unavailable in private or restricted browser contexts.
   }
