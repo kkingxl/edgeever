@@ -33,6 +33,7 @@ import { UserManagementCard } from "./settings/UserManagementCard";
 import { ObjectStorageCard } from "./settings/ObjectStorageCard";
 import { AiModelCard } from "./settings/AiModelCard";
 import { AiPromptsCard } from "./settings/AiPromptsCard";
+import { AiGenerationPreferenceCard } from "./settings/AiGenerationPreferenceCard";
 import { AiTagSuggestionPromptCard } from "./settings/AiTagSuggestionPromptCard";
 import { ThemeToggle } from "./ThemeToggle";
 import type { AuthUser } from "@edgeever/shared";
@@ -241,14 +242,15 @@ export const SettingsPane = ({
         return (
           <SettingsGroup>
             <AiModelCard />
-            <McpConfigCard />
             <AiPromptsCard onOpenLibrary={onOpenAiPrompts} />
+            <McpConfigCard />
             <AdvancedPlayCard />
           </SettingsGroup>
         );
       case "advanced":
         return (
           <SettingsGroup>
+            <AiGenerationPreferenceCard />
             <AiTagSuggestionPromptCard />
             {isOwner ? <ObjectStorageCard demoMode={demoMode} /> : null}
             {canClearLocalData ? <DesktopLocalDataCard /> : null}

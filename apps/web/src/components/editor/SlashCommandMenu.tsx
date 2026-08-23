@@ -29,7 +29,6 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-  COMMAND_ITEM_STRONG_SELECTED_CLASS_NAME,
 } from "@/components/ui/command";
 
 export type SlashCommandId =
@@ -180,7 +179,6 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
                       key={item.id}
                       value={item.id}
                       keywords={item.keywords}
-                      className={COMMAND_ITEM_STRONG_SELECTED_CLASS_NAME}
                       onMouseDown={(event) => event.preventDefault()}
                       onSelect={() => command(item)}
                     >

@@ -11,7 +11,6 @@ import {
   CommandGroup,
   CommandItem,
   CommandList,
-  COMMAND_ITEM_STRONG_SELECTED_CLASS_NAME,
 } from "@/components/ui/command";
 
 export type NoteLinkSuggestionLabels = {
@@ -78,7 +77,6 @@ export const NoteLinkSuggestion = forwardRef<NoteLinkSuggestionHandle, NoteLinkS
               <CommandItem
                 key={item.id}
                 value={item.id}
-                className={COMMAND_ITEM_STRONG_SELECTED_CLASS_NAME}
                 onMouseDown={(event) => event.preventDefault()}
                 onSelect={() => command(item)}
               >

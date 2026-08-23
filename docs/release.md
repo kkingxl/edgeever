@@ -33,10 +33,8 @@ stored in the tracking Issue, not in the public Release notes. Public notes
 contain only user-visible changes, impact, and necessary migration guidance.
 
 Use `--dry-run` to inspect commit coverage, the native rebuild plan, and notes.
-After publication, the command does not download, install, or launch the macOS
-application. Existing desktop installations receive new versions through the
-in-app automatic updater. Pass `--install-desktop` explicitly only when the
-previous installation check is actually needed.
+Use `--skip-install` only when the published macOS application should not be
+installed and launched after the Release.
 
 ## EdgeEver-Specific Behavior
 
@@ -54,9 +52,8 @@ previous installation check is actually needed.
   API-only Release from prompting an unnecessary native update.
 - The script creates the tracking Issue and Draft Release, validates or reuses
   native assets, prepares the multi-platform Docker image in both GHCR and the
-  public Tencent TCR mirror, publishes, and closes the Issue without installing
-  the desktop application by default; installation remains available as an
-  explicit option.
+  public Tencent TCR mirror, publishes, closes the Issue, and installs the
+  matching DMG.
   Demo deployment continues independently after its Actions URL is printed.
 - Mobile store delivery is not part of this command. See
   [Mobile Store Delivery](store-delivery.md).
@@ -77,5 +74,5 @@ the Release can be published.
   run instead of creating another Issue, commit, or Release.
 - A failed post-publication native or Docker audit attempts to return the Release to
   Draft and leaves the Issue open.
-- If an explicit application installation fails, the script restores the previous
-  app from its macOS Trash backup when possible.
+- If application replacement fails, the script restores the previous app from
+  its macOS Trash backup when possible.
