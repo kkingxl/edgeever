@@ -1,17 +1,13 @@
 {
-  "version": "1.42.1",
+  "version": "1.45.1",
   "changes": {
     "en-US": [
-      "Keep newly created notes selected after sync, and make links between publicly shared notes open correctly.",
-      "Make downloaded desktop updates clearly actionable so they can be installed without hunting for the update control.",
-      "Prevent desktop edits from being reported as sync conflicts after a newer local change supersedes an in-flight sync.",
-      "Improve nested-list editing so Tab, Shift+Tab, Backspace, and indentation controls behave consistently."
+      "Render PDF attachments correctly in the desktop app after updating its compatibility runtime.",
+      "Keep the note list usable when one note fails to render, and recover safely without reopening the failing note after restart."
     ],
     "zh-CN": [
-      "修复新建笔记同步后的选中状态，并让公开分享笔记之间的引用链接正确打开。",
-      "让已下载的桌面更新显示明确的安装入口，无需再寻找更新控件。",
-      "修复桌面端较新的本地编辑覆盖同步中变更时被误报为同步冲突的问题。",
-      "改进多级列表编辑，使 Tab、Shift+Tab、退格键和缩进控件的行为保持一致。"
+      "更新桌面端兼容运行时，确保 PDF 附件能够正常渲染。",
+      "单篇笔记渲染失败时保持笔记列表可用，并在重启后安全恢复，避免再次打开异常笔记。"
     ]
   }
 }
